@@ -89,16 +89,16 @@ component per invocation).
 
 It is used as such:
 #+BEGIN_SRC :sh
-semvercli bump --major
+semvercli read --major
 1
-semvercli bump --minor
+semvercli read --minor
 1
-semvercli bump --patch
+semvercli read --patch
 1
-semvercli bump --pre
+semvercli read --pre
 rc.1
-semvercli bump --build
+semvercli read --build
 dev.amd64.linux
-semvercli bump --version
+semvercli read --version
 1.1.1-rc.1+dev.amd64.linux
 #+END_SRC
