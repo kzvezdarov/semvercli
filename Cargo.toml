@@ -1,5 +1,5 @@
 [package]
-name = "version-bump"
+name = "semvercli"
 version = "0.0.1"
 authors = ["Kiril Zvezdarov <kzvezdarov@gmail.com>"]
 edition = "2018"

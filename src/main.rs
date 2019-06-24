@@ -25,6 +25,7 @@ fn parser<'a, 'b>() -> App<'a, 'b> {
         .settings(&[AppSettings::SubcommandRequiredElseHelp])
         .subcommand(
             SubCommand::with_name("read")
+                .about("Read and print a specific version component.")
                 .arg(
                     Arg::with_name("version")
                         .long("version")
@@ -63,6 +64,7 @@ fn parser<'a, 'b>() -> App<'a, 'b> {
         )
         .subcommand(
             SubCommand::with_name("bump")
+                .about("Bump or set a specific version component.")
                 .arg(
                     Arg::with_name("major")
                         .long("major")
@@ -93,7 +95,7 @@ fn parser<'a, 'b>() -> App<'a, 'b> {
                 .arg(
                     Arg::with_name("version")
                         .long("version")
-                        .help("Set VERSION")
+                        .help("Set the full VERSION")
                         .takes_value(true),
                 )
                 .group(

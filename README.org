@@ -1,0 +1,104 @@
+* ~semvercli~
+** Overview:
+   Command line utility for setting, bumping, and reading Rust pacakge versions.
+This is an extremely thin layer over the [[https://crates.io/crates/semver][semver crate]] and meant to just serve as a
+command line glue for tools such as [[https://crates.io/crates/cargo-make][cargo-make]].
+** Installation:
+   Via ~cargo~:
+#+BEGIN_SRC :sh
+cargo install semvercli
+#+END_SRC
+   From source:
+#+BEGIN_SRC :sh
+git clone git@github.com:kzvezdarov/semvercli
+cargo install -C semvercli/Cargo.toml
+#+END_SRC
+** Usage:
+   The command's interface is split into a ~read~ and ~bump~ subcommands:
+#+BEGIN_SRC :sh
+semvercli 0.0.1
+
+USAGE:
+    semvercli [OPTIONS] <SUBCOMMAND>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+        --manifest-path <manifest-path>    Path to Cargo.toml [default: Cargo.toml]
+
+SUBCOMMANDS:
+    bump    Bump or set a specific version component.
+    help    Prints this message or the help of the given subcommand(s)
+    read    Read and print a specific version component.
+#+END_SRC
+
+Bump has the following interface:
+#+BEGIN_SRC :sh
+semvercli-bump
+Bump or set a specific version component.
+
+USAGE:
+    semvercli bump [OPTIONS] <--version <version>|--major|--minor|--patch|--pre <pre>|--build <build>>
+
+FLAGS:
+    -h, --help     Prints help information
+        --major    Bump the MAJOR version.
+        --minor    Bump the MINOR version.
+        --patch    Bump the PATCH version.
+
+OPTIONS:
+        --build <build>        Set the BUILD metadata.
+        --pre <pre>            Set the PRE-RELEASE version.
+        --version <version>    Set the full VERSION
+
+#+END_SRC
+Note that ~semvercli bump~ will only take one flag or option at a time (i.e. it can only mutate the value of one
+component per invocation).
+
+It is used as such:
+#+BEGIN_SRC :sh 
+semvercli bump --version 0.0.1
+semvercli bump --major
+semvercli bump --minor
+semvercli bump --patch
+semvercli bump --pre rc.1
+semvercli bump --build dev.amd64.linux
+#+END_SRC
+
+Read has the following interface:
+#+BEGIN_SRC :sh
+semvercli-read
+Read and print a specific version component.
+
+USAGE:
+    semvercli read <--version|--major|--minor|--patch|--pre|--build>
+
+FLAGS:
+        --build      Print the BUILD version of this package.
+    -h, --help       Prints help information
+        --major      Print the MAJOR version of this package.
+        --minor      Print the MINOR version of this package.
+        --patch      Print the PATCH version of this package.
+        --pre        Print the PRE-RELEASE version of this package.
+        --version    Print the VERSION set in the given manifest.
+#+END_SRC
+Note that ~semvercli read~ will only take one flag or option at a time(i.e. it can only read the value of one
+component per invocation).
+
+It is used as such:
+#+BEGIN_SRC :sh
+semvercli bump --major
+1
+semvercli bump --minor
+1
+semvercli bump --patch
+1
+semvercli bump --pre
+rc.1
+semvercli bump --build
+dev.amd64.linux
+semvercli bump --version
+1.1.1-rc.1+dev.amd64.linux
+#+END_SRC
