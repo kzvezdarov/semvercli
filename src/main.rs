@@ -1,3 +1,6 @@
+//! Command line utility for setting, bumping, and reading Rust pacakge versions.
+//! This is an extremely thin layer over the [semver crate](https://crates.io/crates/semver)
+//! and meant to just serve as a command line glue for tools such as [cargo-make](https://crates.io/crates/cargo-make).
 #[macro_use]
 extern crate clap;
 extern crate semver;
@@ -17,7 +20,7 @@ use semver::{Identifier, Version};
 use toml_edit::{value, Document};
 
 fn parser<'a, 'b>() -> App<'a, 'b> {
-    App::new("version-bump")
+    App::new("semvercli")
         .version(crate_version!())
         .settings(&[AppSettings::SubcommandRequiredElseHelp])
         .subcommand(
@@ -213,6 +216,10 @@ fn read(manifest: &Document, matches: &ArgMatches) -> String {
     }
 }
 
+/// Bumps the package version string of the provided manifest;
+/// panics if an incorrect pre-release/build/version string is
+/// passed in the argument matches; assumes that it will always
+/// be called with a component to bump.
 fn bump(manifest: &mut Document, matches: &ArgMatches) {
     let mut version = read_version(&manifest);
 
@@ -238,6 +245,9 @@ fn bump(manifest: &mut Document, matches: &ArgMatches) {
     manifest["package"]["version"] = value(version.to_string());
 }
 
+/// Main entrypoint, which executes either a read or a bump depending on
+/// the provided arguments. It takes in an output explicitly in order to
+/// simplify testing.
 fn execute(matches: &ArgMatches, stdout: &mut Write) {
     let manifest_path = matches.value_of("manifest-path").unwrap();
     let mut manifest = read_manifest(manifest_path);
@@ -261,6 +271,16 @@ fn main() {
     execute(&matches, &mut io::stdout());
 }
 
+
+/// Property tests to validate read/bump behavior;
+/// these are probably a massiver overkill given the simplicity of the implementation above,
+/// but it's a useful demonstration/exercise in using proptest.
+///
+/// The current tests only ensure that the correct operation is performed given valid input for
+/// the corresponding subcommand and work almost end to end - both start with a valid command line
+/// input and assert on the final file/stream outputs (i.e. the `bump` makes use of tempdir, and `read`
+/// just passes in a vector for stdout). It would be nice to eventually lift and combine those and demonstrate
+/// verifying the full command from start to finish against more fuzzed inputs.
 #[cfg(test)]
 mod test {
     use proptest::option::of;
@@ -275,6 +295,9 @@ mod test {
 
     use super::*;
 
+    /// Enum of operations that can be performed
+    /// by each subcommand; generating the CLI
+    /// convenience
     #[derive(Debug, Clone)]
     enum Op {
         Major,
@@ -286,20 +309,25 @@ mod test {
     }
 
     prop_compose! {
+        /// Metadata generation strategy that outputs semver parsed metadata labels. Both the
+        /// build and prerelease labels conform to the same format, so only one strategy is needed.
         // Proptest doesn't seem to support the character classes from the regex crate, such as
         // the [[:alphanum:]] class
-        fn metadata_strategy()(label in r"[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*") -> Vec<Identifier> {
+        fn metadata_strat()(label in r"[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*") -> Vec<Identifier> {
             dbg!(label.clone());
             VersionMetadata::try_from(label.as_str()).unwrap().0
         }
     }
 
     prop_compose! {
-        fn version_strategy()(major in any::<u64>(),
+        /// Semantic version genration strategy; the only interesting thing here is making use
+        /// of `proptest::option::of` to encode that build and prerelease labels are not always
+        /// present.
+        fn version_strat()(major in any::<u64>(),
                      minor in any::<u64>(),
                      patch in any::<u64>(),
-                     pre in of(metadata_strategy()),
-                     build in of(metadata_strategy())) -> Version {
+                     pre in of(metadata_strat()),
+                     build in of(metadata_strat())) -> Version {
             Version {
                 major, minor, patch,
                 pre: pre.unwrap_or(vec![]),
@@ -309,7 +337,11 @@ mod test {
     }
 
     prop_compose! {
-        fn manifest_strategy()(version in version_strategy()) -> Document {
+        /// Manifest generation strategy; currently it will always be valid, in the
+        /// sense of being valid TOML (since the output is a `toml_edit::Document`) and
+        /// containing a `[package]` table which has a `version` key that maps to a
+        /// valid semantic version string.
+        fn manifest_strat()(version in version_strat()) -> Document {
             let mut manifest = Document::new();
             manifest["package"] = Item::Table(Table::new());
             manifest["package"]["version"] = value(version.to_string());
@@ -318,23 +350,31 @@ mod test {
         }
     }
 
-    fn op_strategy() -> impl Strategy<Value = Op> {
+    /// Simple operation generation strategy that is shared by tests to both `bump`
+    /// and `read`; in the case of `bump` the values for metadata labels and version
+    /// are simply ignored.
+    fn op_strat() -> impl Strategy<Value = Op> {
         prop_oneof![
             Just(Op::Major),
             Just(Op::Minor),
             Just(Op::Patch),
-            metadata_strategy()
+            metadata_strat()
                 .prop_map(|p| Op::Pre(String::from(VersionMetadata(p)))),
-            metadata_strategy()
+            metadata_strat()
                 .prop_map(|b| Op::Build(String::from(VersionMetadata(b)))),
-            version_strategy()
+            version_strat()
                 .prop_map(|v| Op::Version(v.to_string()))
         ]
     }
 
     proptest! {
+        /// Tests that given valid inputs to the bump subcommand and a valid manifest file
+        /// the manifest file is updated with the correct version string.
+        /// The test works by essentially reimplementing the logic of `bump` as minimalistically as possible -
+        /// it just matches each op to an effect, and using a temp. file to validate the file manipulation performed
+        /// by the subcomand.
         #[test]
-        fn test_bump(manifest in manifest_strategy(), op in op_strategy()) {
+        fn test_bump(manifest in manifest_strat(), op in op_strat()) {
             let tmpdir = tempdir().unwrap();
             let tmp_path = tmpdir.path().join("Cargo.toml");
             let manifest_path = tmp_path.to_str().unwrap();
@@ -380,8 +420,11 @@ mod test {
             };
         }
 
+        /// Tests that given valid inputs to read the correct version component is written
+        /// to `stdout`. It does so by reimplementing the minimum amount of logic from `read` to
+        /// parse the component out of the input version and compare to what was written to `stdout`.
         #[test]
-        fn test_read(manifest in manifest_strategy(), op in op_strategy()) {
+        fn test_read(manifest in manifest_strat(), op in op_strat()) {
             let tmpdir = tempdir().unwrap();
             let tmp_path = tmpdir.path().join("Cargo.toml");
             let manifest_path = tmp_path.to_str().unwrap();
