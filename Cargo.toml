@@ -14,8 +14,8 @@ categories = ["command-line-utilities", "development-tools::build-utils"]
 license = "Apache-2.0"
 
 [badges]
-is-it-maintained-issue-resolution = { repository = "github.com/kzvezdarov/semvercli" }
-is-it-maintained-open-issues = { repository = "github.com/kzvezdarov/semvercli" }
+is-it-maintained-issue-resolution = { repository = "kzvezdarov/semvercli", service = "github" }
+is-it-maintained-open-issues = { repository = "kzvezdarov/semvercli", service = "github" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
