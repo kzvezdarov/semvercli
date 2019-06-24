@@ -5,8 +5,8 @@ authors = ["Kiril Zvezdarov <kzvezdarov@gmail.com>"]
 edition = "2018"
 
 description = "A thin command line interface over the semver crate"
-homepage = "github.com/kzvezdarov/semvercli"
-repository = "github.com/kzvezdarov/semvercli"
+homepage = "https://github.com/kzvezdarov/semvercli"
+repository = "https://github.com/kzvezdarov/semvercli"
 readme = "README.md"
 keywords = ["version", "bump", "semver", "cli"]
 categories = ["command-line-utilities", "development-tools::build-utils"]
